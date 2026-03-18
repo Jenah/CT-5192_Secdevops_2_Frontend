@@ -54,3 +54,5 @@ jobs:
         uses: snyk/actions/node@master   # frontend
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          command: test
