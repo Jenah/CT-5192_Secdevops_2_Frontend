@@ -1,0 +1,51 @@
+name: Frontend SonarQube Analysis
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  sonarqube:
+    name: SonarQube Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run frontend tests with coverage
+        run: npm test -- --coverage --watchAll=false --ci
+        continue-on-error: true
+
+      - name: Create sonar-project.properties
+        env:
+          SONAR_ORG: ${{ secrets.SONAR_ORGANIZATION }}
+          SONAR_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
+        run: |
+          echo "sonar.organization=${SONAR_ORG}" > sonar-project.properties
+          echo "sonar.projectKey=${SONAR_KEY}" >> sonar-project.properties
+          echo "sonar.projectName=LMS Frontend (React)" >> sonar-project.properties
+          echo "sonar.sources=src" >> sonar-project.properties
+          echo "sonar.tests=src/__tests__" >> sonar-project.properties
+          echo "sonar.exclusions=**/node_modules/**,**/*.test.tsx,**/*.test.ts,**/coverage/**" >> sonar-project.properties
+          echo "sonar.test.inclusions=**/*.test.tsx,**/*.test.ts" >> sonar-project.properties
+          echo "sonar.javascript.lcov.reportPaths=coverage/lcov.info" >> sonar-project.properties
+          echo "sonar.sourceEncoding=UTF-8" >> sonar-project.properties
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@v5.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
